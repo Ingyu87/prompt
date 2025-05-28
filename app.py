@@ -158,10 +158,13 @@ def main():
     
     model = setup_gemini()
     
+    # 세션 상태 초기화
     if 'selected_style' not in st.session_state:
         st.session_state.selected_style = None
     if 'generated_prompts' not in st.session_state:
         st.session_state.generated_prompts = {}
+    if 'topic_validated' not in st.session_state:
+        st.session_state.topic_validated = False
     
     st.markdown("### 만화/사진 스타일을 선택하세요")
     cols = st.columns(3)
@@ -193,17 +196,62 @@ def main():
     
     topic = st.text_area("주제 입력", placeholder="예: 우주를 탐험하는 친구들, 숲속의 동물 친구들...", height=100)
     
+    # 실시간 주제 검증 및 시각화
+    if topic.strip():
+        with st.container():
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                with st.spinner("검증 중..."):
+                    pass  # 스피너 효과
+            with col2:
+                if model:
+                    is_valid, validation_message = validate_content(model, topic)
+                    if is_valid:
+                        st.success(f"✅ **적합한 주제입니다!** - {validation_message}")
+                        st.session_state.topic_validated = True
+                        st.session_state.validation_message = validation_message
+                    else:
+                        st.error(f"❌ **부적합한 주제입니다** - {validation_message}")
+                        st.session_state.topic_validated = False
+                        st.session_state.validation_message = validation_message
+                        # 개선 제안
+                        st.info("💡 **개선 제안**: 교육적이고 건전한 내용으로 수정해주세요\n예시: 과학 탐험, 역사 여행, 자연 관찰, 우정 이야기")
+                else:
+                    st.warning("⚠️ API 설정이 필요합니다")
+                    st.session_state.topic_validated = False
+    else:
+        # 주제가 비어있으면 초기화
+        st.session_state.topic_validated = False
+        if 'validation_message' in st.session_state:
+            del st.session_state['validation_message']
+    
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        # 주제 검증 통과 + 스타일 선택 시에만 활성화
+        is_ready = (topic.strip() and 
+                   st.session_state.selected_style is not None and 
+                   st.session_state.get('topic_validated', False))
+        
         generate_btn = st.button("🎨 프롬프트 생성하기", use_container_width=True, type="primary", 
-                                disabled=not (topic and st.session_state.selected_style and model))
+                                disabled=not is_ready)
+        
+        # 비활성화 이유 표시
+        if not is_ready:
+            if not topic.strip():
+                st.caption("💭 주제를 입력해주세요")
+            elif not st.session_state.selected_style:
+                st.caption("🎨 스타일을 선택해주세요") 
+            elif not st.session_state.get('topic_validated', False):
+                st.caption("✅ 주제 검증을 통과해야 합니다")
     
     # 다시 만들기 버튼 (프롬프트가 이미 생성된 경우에만 표시)
     if st.session_state.generated_prompts:
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("🔄 다시 만들기", use_container_width=True, type="secondary"):
-                if topic and st.session_state.selected_style and model:
+                if not model:
+                    st.error("🚨 API 키 설정이 필요합니다.")
+                elif topic and st.session_state.selected_style:
                     with st.spinner("새로운 프롬프트를 생성하는 중..."):
                         is_valid, validation_message = validate_content(model, topic)
                         if not is_valid:
@@ -213,21 +261,19 @@ def main():
                             st.success("✨ 새로운 프롬프트가 생성되었습니다!")
                             st.rerun()
     
-    if generate_btn and topic and st.session_state.selected_style:
-        with st.spinner("내용을 검증하고 프롬프트를 생성하는 중..."):
-            is_valid, validation_message = validate_content(model, topic)
-            if not is_valid:
-                st.error(f"🚫 {validation_message}")
-                st.markdown('<div class="warning-box">💡 교육적이고 건전한 주제로 다시 작성해주세요.<br>예시: 과학 탐험, 역사 여행, 자연 관찰, 우정 이야기 등</div>', unsafe_allow_html=True)
-            else:
-                st.session_state.generated_prompts = generate_prompts(model, topic, st.session_state.selected_style)
+    if generate_btn and is_ready:
+        # 이미 검증이 완료된 상태이므로 바로 프롬프트 생성
+        with st.spinner("프롬프트를 생성하는 중..."):
+            st.session_state.generated_prompts = generate_prompts(model, topic, st.session_state.selected_style)
+            if st.session_state.generated_prompts:
+                st.success("🎉 프롬프트가 성공적으로 생성되었습니다!")
     
     if st.session_state.generated_prompts:
         st.markdown("---")
         st.markdown("### 🎯 생성된 프롬프트")
         
         # 복사 안내
-        st.markdown('<div class="copy-tip">💡 <strong>쉬운 복사법</strong>: 코드박스를 트리플클릭(3번 연속 클릭)하면 전체 선택됩니다!</div>', unsafe_allow_html=True)
+        st.markdown('<div class="copy-tip">💡 <strong>쉬운 복사법</strong>: 텍스트박스 클릭 → Ctrl+A (전체선택) → Ctrl+C (복사)</div>', unsafe_allow_html=True)
         
         # 새로고침 안내
         st.info("💡 같은 주제로 다른 버전의 프롬프트가 필요하면 '🔄 다시 만들기' 버튼을 사용하세요!")
@@ -250,17 +296,24 @@ def main():
                 # 복사하기 쉬운 텍스트 영역
                 st.markdown(f"**📋 {platform} 프롬프트**")
                 
-                # 복사하기 쉬운 코드 블록
-                st.code(prompt_text, language="text")
+                # 여러 줄로 보기 좋게 표시하는 텍스트 영역
+                st.text_area(
+                    "",
+                    value=prompt_text,
+                    height=150,
+                    key=f"display_{platform}_{hash(prompt_text) % 1000}",
+                    label_visibility="collapsed",
+                    help="텍스트를 클릭하고 Ctrl+A로 전체선택 후 Ctrl+C로 복사하세요"
+                )
                 
                 # 복사 가이드
                 col1, col2 = st.columns([3, 1])
                 with col1:
-                    st.info("💡 위 코드박스를 **트리플클릭** 하면 전체 선택됩니다!")
+                    st.info("💡 텍스트박스 클릭 → **Ctrl+A** (전체선택) → **Ctrl+C** (복사)")
                 with col2:
                     if st.button("📝 복사법", key=f"help_{platform}_{hash(prompt_text) % 1000}"):
                         st.balloons()
-                        st.success("1️⃣ 코드박스 트리플클릭\n2️⃣ Ctrl+C로 복사!")
+                        st.success("1️⃣ 텍스트박스 클릭\n2️⃣ Ctrl+A 전체선택\n3️⃣ Ctrl+C 복사!")
                 
                 st.markdown("---")
         
