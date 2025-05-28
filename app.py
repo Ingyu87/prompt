@@ -46,6 +46,15 @@ st.markdown("""
         border-radius: 5px;
         margin: 10px 0;
     }
+    .copy-tip {
+        background-color: #e8f4fd;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+        font-size: 14px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -79,20 +88,20 @@ def validate_content(model, topic):
     validation_prompt = f"""다음 주제가 초등학생용 교육 콘텐츠로 적절한지 판단해주세요:
     주제: "{topic}"
     
-차단 기준 (이런 내용만 부적절함으로 판단):
-- 정치적 내용 (정당, 정치인, 선거 등)
-- 혐오, 차별 표현
-- 심각한 폭력, 잔인한 내용
-- 성적 내용
-- 심한 욕설, 비속어
+    차단 기준 (이런 내용만 부적절함으로 판단):
+    - 정치적 내용 (정당, 정치인, 선거 등)
+    - 혐오, 차별 표현
+    - 심각한 폭력, 잔인한 내용
+    - 성적 내용
+    - 심한 욕설, 비속어
 
-허용 기준 (이런 내용은 적절함):
-- 친구들끼리 다투기, 갈등 해결
-- 경쟁, 스포츠, 게임
-- 모험, 탐험, 도전
-- 감정 표현, 성장 이야기
-
-답변 형식: 판단결과: [적절함/부적절함], 이유: [설명]"""
+    허용 기준 (이런 내용은 적절함):
+    - 친구들끼리 다투기, 갈등 해결
+    - 경쟁, 스포츠, 게임
+    - 모험, 탐험, 도전
+    - 감정 표현, 성장 이야기
+    
+    답변 형식: 판단결과: [적절함/부적절함], 이유: [설명]"""
     
     try:
         response = model.generate_content(validation_prompt)
@@ -114,16 +123,18 @@ def generate_prompts(model, topic, style):
     주제: {topic}
     스타일: {style_info['name']} - {style_info['description']}
     
-    다음 3개 플랫폼에 맞는 프롬프트를 각각 만들어주세요:
+    다음 4개 플랫폼에 맞는 프롬프트를 각각 만들어주세요:
     
     1. 투닝매직용: 한국어 가능, 간단하고 직관적인 표현
     2. 캔바 AI용: 영어 프롬프트, 상세하고 구체적인 설명
-    3. 아트봅봅 스쿨용: 초등학생 교육용에 최적화
+    3. 아트봉봉 스쿨용: 초등학생 교육용에 최적화
+    4. ChatGPT DALL-E용: 영어 프롬프트, 창의적이고 상세한 묘사
     
     답변 형식:
     **투닝매직**: [프롬프트]
     **캔바 AI**: [프롬프트]  
-    **아트봉봉 스쿨**: [프롬프트]"""
+    **아트봉봉 스쿨**: [프롬프트]
+    **ChatGPT**: [프롬프트]"""
     
     try:
         response = model.generate_content(prompt)
@@ -183,18 +194,58 @@ def main():
             is_valid, validation_message = validate_content(model, topic)
             if not is_valid:
                 st.error(f"🚫 {validation_message}")
-                st.markdown('<div class="warning-box">💡 교육적이고 건전한 주제로 다시 작성해주세요.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="warning-box">💡 교육적이고 건전한 주제로 다시 작성해주세요.<br>예시: 과학 탐험, 역사 여행, 자연 관찰, 우정 이야기 등</div>', unsafe_allow_html=True)
             else:
                 st.session_state.generated_prompts = generate_prompts(model, topic, st.session_state.selected_style)
     
     if st.session_state.generated_prompts:
         st.markdown("---")
         st.markdown("### 🎯 생성된 프롬프트")
+        
+        # 복사 안내
+        st.markdown('<div class="copy-tip">💡 <strong>복사 방법</strong>: 텍스트 박스 클릭 → Ctrl+A (전체선택) → Ctrl+C (복사)</div>', unsafe_allow_html=True)
+        
+        # 각 플랫폼별 프롬프트 표시
+        platform_info = {
+            "투닝매직": {"url": "https://tooning.io/", "desc": "간단한 한국어 프롬프트", "icon": "🎭"},
+            "캔바 AI": {"url": "https://www.canva.com/", "desc": "상세한 영어 프롬프트", "icon": "🎨"}, 
+            "아트봉봉 스쿨": {"url": "https://school-teacher.art-bonbon.com/", "desc": "교육용 최적화 프롬프트", "icon": "🎪"},
+            "ChatGPT": {"url": "https://chat.openai.com/", "desc": "ChatGPT DALL-E용 창의적 프롬프트", "icon": "🤖"}
+        }
+        
         for platform, prompt_text in st.session_state.generated_prompts.items():
-            st.markdown(f"#### {platform}")
-            st.code(prompt_text, language="text")
-            st.info("💡 위 텍스트를 복사하여 해당 사이트에서 사용하세요!")
-            st.markdown("---")
+            if platform in platform_info:
+                info = platform_info[platform]
+                
+                st.markdown(f"#### {info['icon']} [{platform}]({info['url']})")
+                st.markdown(f"*{info['desc']}*")
+                
+                # 자동 복사 가능한 텍스트 영역과 복사 버튼
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.text_area(
+                        "",
+                        value=prompt_text,
+                        height=120,
+                        key=f"prompt_{platform}_{hash(prompt_text) % 1000}",
+                        label_visibility="collapsed"
+                    )
+                with col2:
+                    if st.button("📋 복사", key=f"btn_{platform}_{hash(prompt_text) % 1000}"):
+                        st.success("텍스트를 선택하고\nCtrl+C를 눌러주세요!")
+                
+                st.markdown("---")
+        
+        # 사용 안내
+        st.markdown("### 📋 사용 방법")
+        st.markdown("""
+        1. **투닝매직**: 한국어 프롬프트를 복사하여 투닝매직 사이트에 붙여넣기
+        2. **캔바 AI**: 영어 프롬프트를 캔바의 AI 이미지 생성기에 입력
+        3. **아트봉봉 스쿨**: 교육용 프롬프트를 아트봉봉 스쿨에서 활용
+        4. **ChatGPT**: ChatGPT에 접속하여 DALL-E 이미지 생성에 활용
+        
+        각 사이트의 특성에 맞게 최적화된 프롬프트를 제공합니다! 🎨
+        """)
 
 if __name__ == "__main__":
     main()
