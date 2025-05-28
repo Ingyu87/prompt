@@ -294,7 +294,7 @@ def main():
                 st.markdown(f"*{info['desc']}*")
                 
                 # 복사하기 쉬운 텍스트 영역
-                st.markdown(f"**📋 {platform} 프롬프트**")
+                st.markdown(f"**📋 {platform}**")
                 
                 # 여러 줄로 보기 좋게 표시하는 텍스트 영역
                 st.text_area(
