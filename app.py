@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import google.generativeai as genai
 import os
 
@@ -228,7 +227,7 @@ def main():
         st.markdown("### 🎯 생성된 프롬프트")
         
         # 복사 안내
-        st.markdown('<div class="copy-tip">💡 <strong>복사 방법</strong>: 📋 복사 버튼을 클릭하면 자동으로 복사됩니다!</div>', unsafe_allow_html=True)
+        st.markdown('<div class="copy-tip">💡 <strong>쉬운 복사법</strong>: 코드박스를 트리플클릭(3번 연속 클릭)하면 전체 선택됩니다!</div>', unsafe_allow_html=True)
         
         # 새로고침 안내
         st.info("💡 같은 주제로 다른 버전의 프롬프트가 필요하면 '🔄 다시 만들기' 버튼을 사용하세요!")
@@ -248,31 +247,20 @@ def main():
                 st.markdown(f"#### {info['icon']} [{platform}]({info['url']})")
                 st.markdown(f"*{info['desc']}*")
                 
-                # 자동 복사 가능한 텍스트 영역과 복사 버튼
-                col1, col2 = st.columns([4, 1])
+                # 복사하기 쉬운 텍스트 영역
+                st.markdown(f"**📋 {platform} 프롬프트**")
+                
+                # 복사하기 쉬운 코드 블록
+                st.code(prompt_text, language="text")
+                
+                # 복사 가이드
+                col1, col2 = st.columns([3, 1])
                 with col1:
-                    st.text_area(
-                        "",
-                        value=prompt_text,
-                        height=120,
-                        key=f"prompt_{platform}_{hash(prompt_text) % 1000}",
-                        label_visibility="collapsed"
-                    )
+                    st.info("💡 위 코드박스를 **트리플클릭** 하면 전체 선택됩니다!")
                 with col2:
-                    copy_button_key = f"btn_{platform}_{hash(prompt_text) % 1000}"
-                    if st.button("📋 복사", key=copy_button_key):
-                        # JavaScript로 클립보드 복사
-                        escaped_text = prompt_text.replace('`', '\\`').replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
-                        components.html(f"""
-                        <script>
-                        navigator.clipboard.writeText(`{escaped_text}`).then(function() {{
-                            alert('✅ 프롬프트가 복사되었습니다!');
-                        }}).catch(function(err) {{
-                            console.error('복사 실패: ', err);
-                            alert('❌ 복사에 실패했습니다. 수동으로 복사해주세요.');
-                        }});
-                        </script>
-                        """, height=0)
+                    if st.button("📝 복사법", key=f"help_{platform}_{hash(prompt_text) % 1000}"):
+                        st.balloons()
+                        st.success("1️⃣ 코드박스 트리플클릭\n2️⃣ Ctrl+C로 복사!")
                 
                 st.markdown("---")
         
