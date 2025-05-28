@@ -70,7 +70,7 @@ def setup_gemini():
         st.info("Streamlit Secrets 또는 환경변수에서 GEMINI_API_KEY를 설정해주세요.")
         return None
     genai.configure(api_key=api_key)
-    return genai.GenerativeModel('gemini-pro')
+    return genai.GenerativeModel('gemini-1.5-flash')
 
 def validate_content(model, topic):
     if not model:
