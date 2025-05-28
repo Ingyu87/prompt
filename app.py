@@ -198,6 +198,21 @@ def main():
         generate_btn = st.button("🎨 프롬프트 생성하기", use_container_width=True, type="primary", 
                                 disabled=not (topic and st.session_state.selected_style and model))
     
+    # 다시 만들기 버튼 (프롬프트가 이미 생성된 경우에만 표시)
+    if st.session_state.generated_prompts:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🔄 다시 만들기", use_container_width=True, type="secondary"):
+                if topic and st.session_state.selected_style and model:
+                    with st.spinner("새로운 프롬프트를 생성하는 중..."):
+                        is_valid, validation_message = validate_content(model, topic)
+                        if not is_valid:
+                            st.error(f"🚫 {validation_message}")
+                        else:
+                            st.session_state.generated_prompts = generate_prompts(model, topic, st.session_state.selected_style)
+                            st.success("✨ 새로운 프롬프트가 생성되었습니다!")
+                            st.rerun()
+    
     if generate_btn and topic and st.session_state.selected_style:
         with st.spinner("내용을 검증하고 프롬프트를 생성하는 중..."):
             is_valid, validation_message = validate_content(model, topic)
@@ -212,7 +227,10 @@ def main():
         st.markdown("### 🎯 생성된 프롬프트")
         
         # 복사 안내
-        st.markdown('<div class="copy-tip">💡 <strong>복사 방법</strong>: 텍스트 박스 클릭 → Ctrl+A (전체선택) → Ctrl+C (복사)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="copy-tip">💡 <strong>복사 방법</strong>: 📋 복사 버튼을 클릭하면 자동으로 복사됩니다!</div>', unsafe_allow_html=True)
+        
+        # 새로고침 안내
+        st.info("💡 같은 주제로 다른 버전의 프롬프트가 필요하면 '🔄 다시 만들기' 버튼을 사용하세요!")
         
         # 각 플랫폼별 프롬프트 표시
         platform_info = {
@@ -240,8 +258,20 @@ def main():
                         label_visibility="collapsed"
                     )
                 with col2:
-                    if st.button("📋 복사", key=f"btn_{platform}_{hash(prompt_text) % 1000}"):
-                        st.success("텍스트를 선택하고\nCtrl+C를 눌러주세요!")
+                    copy_button_key = f"btn_{platform}_{hash(prompt_text) % 1000}"
+                    if st.button("📋 복사", key=copy_button_key):
+                        # JavaScript로 클립보드 복사
+                        escaped_text = prompt_text.replace('`', '\\`').replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
+                        st.components.v1.html(f"""
+                        <script>
+                        navigator.clipboard.writeText(`{escaped_text}`).then(function() {{
+                            alert('✅ 프롬프트가 복사되었습니다!');
+                        }}).catch(function(err) {{
+                            console.error('복사 실패: ', err);
+                            alert('❌ 복사에 실패했습니다. 수동으로 복사해주세요.');
+                        }});
+                        </script>
+                        """, height=0)
                 
                 st.markdown("---")
         
