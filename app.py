@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import google.generativeai as genai
 import os
 
@@ -262,7 +263,7 @@ def main():
                     if st.button("📋 복사", key=copy_button_key):
                         # JavaScript로 클립보드 복사
                         escaped_text = prompt_text.replace('`', '\\`').replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
-                        st.components.v1.html(f"""
+                        components.html(f"""
                         <script>
                         navigator.clipboard.writeText(`{escaped_text}`).then(function() {{
                             alert('✅ 프롬프트가 복사되었습니다!');
