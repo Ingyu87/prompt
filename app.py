@@ -115,7 +115,7 @@ def generate_prompts(model, topic, style):
     답변 형식:
     **투닝매직**: [프롬프트]
     **캔바 AI**: [프롬프트]  
-    **아트봅봅 스쿨**: [프롬프트]"""
+    **아트봉봉 스쿨**: [프롬프트]"""
     
     try:
         response = model.generate_content(prompt)
